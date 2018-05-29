@@ -2,7 +2,6 @@
 {-# LANGUAGE TemplateHaskell#-}
 module Pages
 where
-import           Text.HTML.Scalpel
 import           Text.Regex.PCRE
 import           Data.ByteString.Char8          ( pack )
 import           Data.ByteString.Lazy           ( fromStrict )
