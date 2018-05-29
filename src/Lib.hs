@@ -7,6 +7,7 @@ module Lib
 where
 
 import           Network.HTTP.Client
+import           Control.Monad
 import           Data.Text                      ( Text )
 import           Data.Text.Lazy.Encoding
 import           Data.ByteString                ( ByteString )
@@ -16,7 +17,9 @@ import           Data.List.Split                ( splitOn )
 import           Data.Maybe                     ( mapMaybe)
 import           Pages
 
-someFunc = requestTop
+someFunc = listFiles >>= print
+
+data FAPath = DirPath FilePath | JPGPath FilePath deriving(Show)
 
 getUrl :: String -> IO ByteString
 getUrl url = do
@@ -31,9 +34,33 @@ requestTop = do
     result <- getUrl (appendBaseUrl "") 
     print $ parseFileList $ unpack result
 
-appendBaseUrl :: String -> String
-appendBaseUrl = (++) "http://192.168.1.105/DCIM"
+listFiles :: IO [FAPath]
+listFiles = walkDir $ DirPath "/"
 
-parseFileList :: String -> [JSONItem]
+appendBaseUrl :: String -> String
+appendBaseUrl = (++) "http://192.168.1.105"
+
+parseFileList :: String -> [JSONFileInfo]
 parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
 
+walkDir :: FAPath -> IO [FAPath]
+walkDir (JPGPath path) = return [JPGPath path]
+walkDir (DirPath path) = do
+    paths <- list $ DirPath path
+    print paths
+    walkd <- mapM walkDir paths
+    return $ concat walkd
+
+list :: FAPath -> IO [FAPath]
+list (DirPath path) = do
+    result <- getUrl $ appendBaseUrl path
+    return $ map convertToFAPath $ parseFileList $ unpack result
+list (JPGPath path) = do
+    result <- getUrl $ appendBaseUrl path
+    print path
+    return $ map convertToFAPath $ parseFileList $ unpack result
+ 
+convertToFAPath :: JSONFileInfo -> FAPath
+convertToFAPath (JSONFileInfo uri fname fsize attr fdate ftime)
+    | fsize == 0 = DirPath $ uri ++ "/" ++ fname
+    | otherwise = JPGPath $ uri ++ "/" ++ fname
