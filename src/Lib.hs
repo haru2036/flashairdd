@@ -23,12 +23,6 @@ someFunc = downloadAllFiles
 
 data FAPath = DirPath FilePath | JPGPath FilePath deriving(Show)
 
-getUrl :: String -> IO ByteString
-getUrl url = do
-    manager  <- newManager defaultManagerSettings
-    request  <- parseRequest url
-    response <- httpLbs request manager
-    return $ toStrict $ responseBody response
 
 
 requestTop :: IO ()
@@ -39,8 +33,29 @@ requestTop = do
 downloadAllFiles :: IO()
 downloadAllFiles = do
     fileList <- listFiles
-    mapM downloadAndSaveFile fileList
+    mapM_ downloadAndSaveFile fileList
     return ()
+
+getUrl :: String -> IO ByteString
+getUrl url = do
+    manager  <- newManager defaultManagerSettings
+    request  <- parseRequest url
+    response <- httpLbs request manager
+    return $ toStrict $ responseBody response
+
+appendBaseUrl :: String -> String
+appendBaseUrl = (++) "http://192.168.1.105"
+
+parseFileList :: String -> [JSONFileInfo]
+parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
+
+walkDir :: FAPath -> IO [FAPath]
+walkDir (JPGPath path) = return [JPGPath path]
+walkDir (DirPath path) = do
+    paths <- list $ DirPath path
+    print paths
+    walkd <- mapM walkDir paths
+    return $ concat walkd
 
 getFullPath :: FAPath -> FilePath
 getFullPath (DirPath path) = appendBaseUrl path
@@ -61,24 +76,8 @@ downloadAndSaveFile path = do
         Left err -> print err
         where fileDir = reverse . (dropWhile ('/' /=)) . reverse
               fileName = reverse . (takeWhile('/' /=)) . reverse
-
-
 listFiles :: IO [FAPath]
 listFiles = walkDir $ DirPath "/"
-
-appendBaseUrl :: String -> String
-appendBaseUrl = (++) "http://192.168.1.105"
-
-parseFileList :: String -> [JSONFileInfo]
-parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
-
-walkDir :: FAPath -> IO [FAPath]
-walkDir (JPGPath path) = return [JPGPath path]
-walkDir (DirPath path) = do
-    paths <- list $ DirPath path
-    print paths
-    walkd <- mapM walkDir paths
-    return $ concat walkd
 
 list :: FAPath -> IO [FAPath]
 list p@(DirPath path) = do
