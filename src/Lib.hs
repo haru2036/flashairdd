@@ -23,8 +23,6 @@ someFunc = downloadAllFiles
 
 data FAPath = DirPath FilePath | JPGPath FilePath deriving(Show)
 
-
-
 requestTop :: IO ()
 requestTop = do
     result <- getUrl (appendBaseUrl "") 
@@ -32,7 +30,7 @@ requestTop = do
 
 downloadAllFiles :: IO()
 downloadAllFiles = do
-    fileList <- listFiles
+    fileList <- listFAFiles
     mapM_ downloadAndSaveFile fileList
     return ()
 
@@ -49,12 +47,11 @@ appendBaseUrl = (++) "http://192.168.1.105"
 parseFileList :: String -> [JSONFileInfo]
 parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
 
-walkDir :: FAPath -> IO [FAPath]
-walkDir (JPGPath path) = return [JPGPath path]
-walkDir (DirPath path) = do
+walkDir :: (FAPath -> IO [FAPath]) -> FAPath -> IO [FAPath]
+walkDir list (JPGPath path) = return [JPGPath path]
+walkDir list (DirPath path) = do
     paths <- list $ DirPath path
-    print paths
-    walkd <- mapM walkDir paths
+    walkd <- mapM (walkDir list) paths 
     return $ concat walkd
 
 getFullPath :: FAPath -> FilePath
@@ -74,18 +71,18 @@ downloadAndSaveFile path = do
             createDirectoryIfMissing True $ fileDir ("photos" ++ getPath path)
             Data.ByteString.writeFile ("photos" ++ getPath path) content
         Left err -> print err
-        where fileDir = reverse . (dropWhile ('/' /=)) . reverse
-              fileName = reverse . (takeWhile('/' /=)) . reverse
-listFiles :: IO [FAPath]
-listFiles = walkDir $ DirPath "/"
+        where fileDir = reverse . dropWhile ('/' /=) . reverse
+              fileName = reverse . takeWhile('/' /=) . reverse
 
-list :: FAPath -> IO [FAPath]
-list p@(DirPath path) = do
+listFAFiles :: IO [FAPath]
+listFAFiles = walkDir listFA $ DirPath "/" 
+
+listFA :: FAPath -> IO [FAPath]
+listFA p@(DirPath path) = do
     result <- getUrl $ getFullPath p
     return $ map convertToFAPath $ parseFileList $ unpack result
-list p@(JPGPath path) = do
+listFA p@(JPGPath path) = do
     result <- getUrl $ getFullPath p
-    print path
     return $ map convertToFAPath $ parseFileList $ unpack result
  
 convertToFAPath :: JSONFileInfo -> FAPath
