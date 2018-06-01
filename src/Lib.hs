@@ -22,6 +22,24 @@ import           Pages
 someFunc = downloadAllFiles
 
 data FAPath = DirPath FilePath | JPGPath FilePath deriving(Show)
+data LocalPath = LDirPath FilePath | LJPGPath FilePath deriving(Show)
+
+
+class Path a where
+    getFullPath :: a -> FilePath
+    getPath :: a -> FilePath
+
+instance Path FAPath where
+    getFullPath (DirPath path) = appendBaseUrl path
+    getFullPath (JPGPath path) = appendBaseUrl path
+    getPath (DirPath path) = path
+    getPath (JPGPath path) = path
+
+instance Path LocalPath where
+    getFullPath (LDirPath path) = appendBaseUrl path
+    getFullPath (LJPGPath path) = appendBaseUrl path
+    getPath (LDirPath path) = path
+    getPath (LJPGPath path) = path
 
 requestTop :: IO ()
 requestTop = do
@@ -54,14 +72,6 @@ walkDir list (DirPath path) = do
     walkd <- mapM (walkDir list) paths 
     return $ concat walkd
 
-getFullPath :: FAPath -> FilePath
-getFullPath (DirPath path) = appendBaseUrl path
-getFullPath (JPGPath path) = appendBaseUrl path
-
-getPath :: FAPath -> FilePath
-getPath (DirPath path) = path
-getPath (JPGPath path) = path
-
 downloadAndSaveFile :: FAPath -> IO()
 downloadAndSaveFile path = do
     result <- openURI $ getFullPath path
@@ -78,13 +88,11 @@ listFAFiles :: IO [FAPath]
 listFAFiles = walkDir listFA $ DirPath "/" 
 
 listFA :: FAPath -> IO [FAPath]
-listFA p@(DirPath path) = do
+listFA p = do
     result <- getUrl $ getFullPath p
     return $ map convertToFAPath $ parseFileList $ unpack result
-listFA p@(JPGPath path) = do
-    result <- getUrl $ getFullPath p
-    return $ map convertToFAPath $ parseFileList $ unpack result
- 
+
+
 convertToFAPath :: JSONFileInfo -> FAPath
 convertToFAPath (JSONFileInfo uri fname fsize attr fdate ftime)
     | fsize == 0 = DirPath $ uri ++ "/" ++ fname
