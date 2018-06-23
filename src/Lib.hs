@@ -17,29 +17,43 @@ import           Data.ByteString.Lazy           ( toStrict )
 import           Data.ByteString.Char8          ( unpack )
 import           Data.List.Split                ( splitOn )
 import           Data.Maybe                     ( mapMaybe)
+import           Data.List                      ( filter, notElem)
 import           Pages
 
-someFunc = downloadAllFiles
+someFunc = downloadNotDownloadedFiles 
 
 data FAPath = DirPath FilePath | JPGPath FilePath deriving(Show)
 data LocalPath = LDirPath FilePath | LJPGPath FilePath deriving(Show)
 
 
 class Path a where
-    getFullPath :: a -> FilePath
     getPath :: a -> FilePath
+    list :: a -> IO [a] 
 
 instance Path FAPath where
-    getFullPath (DirPath path) = appendBaseUrl path
-    getFullPath (JPGPath path) = appendBaseUrl path
     getPath (DirPath path) = path
     getPath (JPGPath path) = path
+    list p@(DirPath path) = do
+        result <- getUrl $ appendBaseUrl path
+        return $ map convertToFAPath $ parseFileList $ unpack result
+    list p@(JPGPath path) = return [p]
+
 
 instance Path LocalPath where
-    getFullPath (LDirPath path) = appendBaseUrl path
-    getFullPath (LJPGPath path) = appendBaseUrl path
     getPath (LDirPath path) = path
     getPath (LJPGPath path) = path
+    list (LDirPath path) = do
+        directories <- listDirectory path
+        mapM isDirectoryLocal directories
+    list p@(LJPGPath path) = return [p]
+
+isDirectoryLocal :: FilePath -> IO LocalPath 
+isDirectoryLocal path = do
+    print path 
+    isdir <- doesDirectoryExist path
+    return $ case isdir of 
+        True -> LDirPath path
+        False -> LJPGPath path
 
 requestTop :: IO ()
 requestTop = do
@@ -52,6 +66,21 @@ downloadAllFiles = do
     mapM_ downloadAndSaveFile fileList
     return ()
 
+downloadNotDownloadedFiles :: IO()
+downloadNotDownloadedFiles = do
+    faFileList <- listFAFiles
+    lFileList <- listLocalFiles 
+    let lfiles = map getPath lFileList
+    print lfiles
+    mapM_ downloadAndSaveFile $ filter (\item -> getPath item `notElem` lfiles) faFileList
+
+listFAFiles :: IO [FAPath]
+listFAFiles = walkDir list $ DirPath "/" 
+
+listLocalFiles :: IO [LocalPath]
+listLocalFiles = do
+    cd <- getCurrentDirectory 
+    walkDirLocal list $ LDirPath $ cd ++ "/photos"
 getUrl :: String -> IO ByteString
 getUrl url = do
     manager  <- newManager defaultManagerSettings
@@ -60,7 +89,7 @@ getUrl url = do
     return $ toStrict $ responseBody response
 
 appendBaseUrl :: String -> String
-appendBaseUrl = (++) "http://192.168.1.105"
+appendBaseUrl = (++) "http://192.168.0.1"
 
 parseFileList :: String -> [JSONFileInfo]
 parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
@@ -72,9 +101,17 @@ walkDir list (DirPath path) = do
     walkd <- mapM (walkDir list) paths 
     return $ concat walkd
 
+walkDirLocal :: (LocalPath -> IO [LocalPath]) -> LocalPath -> IO [LocalPath]
+walkDirLocal list (LJPGPath path) = return [LJPGPath path]
+walkDirLocal list (LDirPath path) = do
+    paths <- list $ LDirPath path
+    walkd <- mapM (walkDirLocal list) paths 
+    print walkd
+    return $ concat walkd
+
 downloadAndSaveFile :: FAPath -> IO()
 downloadAndSaveFile path = do
-    result <- openURI $ getFullPath path
+    result <- openURI $ appendBaseUrl $ getPath path
     case result of 
         Right content -> do 
             print ("downloading:" ++ (fileName (getPath path)))
@@ -84,13 +121,6 @@ downloadAndSaveFile path = do
         where fileDir = reverse . dropWhile ('/' /=) . reverse
               fileName = reverse . takeWhile('/' /=) . reverse
 
-listFAFiles :: IO [FAPath]
-listFAFiles = walkDir listFA $ DirPath "/" 
-
-listFA :: FAPath -> IO [FAPath]
-listFA p = do
-    result <- getUrl $ getFullPath p
-    return $ map convertToFAPath $ parseFileList $ unpack result
 
 
 convertToFAPath :: JSONFileInfo -> FAPath

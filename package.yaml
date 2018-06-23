@@ -35,6 +35,7 @@ library:
   - regex-base
   - split
   - aeson
+  - system-fileio
 
 executables:
   flashairdd-exe:
