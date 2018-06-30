@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-module LocalPath (
-    LocalPath
-   ,listLocalFiles
-)where
+module LocalPath
+    ( LocalPath
+    , listLocalFiles
+    )
+where
 
-import Types
+import           Types
 import           System.Directory
 
 data LocalPath = LDirPath FilePath | LJPGPath FilePath deriving(Show)
@@ -19,21 +20,21 @@ instance Path LocalPath where
 
 listLocalFiles :: IO [LocalPath]
 listLocalFiles = do
-    cd <- getCurrentDirectory 
+    cd <- getCurrentDirectory
     walkDirLocal list $ LDirPath $ cd ++ "/photos"
 
 walkDirLocal :: (LocalPath -> IO [LocalPath]) -> LocalPath -> IO [LocalPath]
 walkDirLocal list (LJPGPath path) = return [LJPGPath path]
 walkDirLocal list (LDirPath path) = do
     paths <- list $ LDirPath path
-    walkd <- mapM (walkDirLocal list) paths 
+    walkd <- mapM (walkDirLocal list) paths
     print walkd
     return $ concat walkd
 
-isDirectoryLocal :: FilePath -> IO LocalPath 
+isDirectoryLocal :: FilePath -> IO LocalPath
 isDirectoryLocal path = do
-    print path 
+    print path
     isdir <- doesDirectoryExist path
-    return $ case isdir of 
-        True -> LDirPath path
+    return $ case isdir of
+        True  -> LDirPath path
         False -> LJPGPath path

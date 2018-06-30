@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell#-}
-module Pages
-where
+module Pages where
 import           Text.Regex.PCRE
 import           Data.ByteString.Char8          ( pack )
 import           Data.ByteString.Lazy           ( fromStrict )
@@ -16,8 +15,9 @@ data JSONFileInfo = JSONFileInfo {r_uri :: String, fname :: String, fsize :: Int
 $(deriveJSON defaultOptions ''JSONFileInfo)
 
 findWlanPush :: String -> [String]
-findWlanPush str = map ((reverse . (drop 2) . reverse) . (drop 12) . matchWlanSdPush)
-        $ splitOn "\n" str
+findWlanPush str =
+        map ((reverse . (drop 2) . reverse) . (drop 12) . matchWlanSdPush)
+                $ splitOn "\n" str
 
 parseWlanPush :: String -> Maybe JSONFileInfo
 parseWlanPush = decode . fromStrict . pack

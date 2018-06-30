@@ -1,6 +1,8 @@
 module HTTP where
 
-import           Data.ByteString                ( ByteString, writeFile)
+import           Data.ByteString                ( ByteString
+                                                , writeFile
+                                                )
 import           Data.ByteString.Lazy           ( toStrict )
 import           Data.ByteString.Char8          ( unpack )
 import           Network.HTTP.Client
