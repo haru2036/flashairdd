@@ -42,10 +42,11 @@ downloadNotDownloadedFiles :: IO ()
 downloadNotDownloadedFiles = do
     faFileList <- listFAFiles
     lFileList  <- listLocalFiles
-    let lfiles = map getPath lFileList
+    let lfiles = map (filename . getPath) lFileList
     print lfiles
     mapM_ downloadAndSaveFile
-        $ filter (\item -> getPath item `notElem` lfiles) faFileList
+        $ filter (\item -> (filename $ getPath item) `notElem` lfiles) faFileList
+    where filename = reverse . takeWhile (/= '/') . reverse -- もっと良い方法がありそう
 
 
 downloadAndSaveFile :: FAPath -> IO ()
