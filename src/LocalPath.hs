@@ -17,19 +17,18 @@ instance Path LocalPath where
         directories <- listDirectory path
         mapM isDirectoryLocal directories
     list p@(LJPGPath path) = return [p]
+    walkDir list (LJPGPath path) = return [LJPGPath path]
+    walkDir list (LDirPath path) = do
+        paths <- list $ LDirPath path
+        walkd <- mapM (walkDir list) paths
+        print walkd
+        return $ concat walkd
 
 listLocalFiles :: IO [LocalPath]
 listLocalFiles = do
     cd <- getCurrentDirectory
-    walkDirLocal list $ LDirPath $ cd ++ "/photos"
+    walkDir list $ LDirPath $ cd ++ "/photos"
 
-walkDirLocal :: (LocalPath -> IO [LocalPath]) -> LocalPath -> IO [LocalPath]
-walkDirLocal list (LJPGPath path) = return [LJPGPath path]
-walkDirLocal list (LDirPath path) = do
-    paths <- list $ LDirPath path
-    walkd <- mapM (walkDirLocal list) paths
-    print walkd
-    return $ concat walkd
 
 isDirectoryLocal :: FilePath -> IO LocalPath
 isDirectoryLocal path = do

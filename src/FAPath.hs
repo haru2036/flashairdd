@@ -22,6 +22,11 @@ instance Path FAPath where
         result <- getUrl $ appendBaseUrl path
         return $ map convertToFAPath $ parseFileList $ unpack result
     list p@(JPGPath path) = return [p]
+    walkDir list (JPGPath path) = return [JPGPath path]
+    walkDir list (DirPath path) = do
+        paths <- list $ DirPath path
+        walkd <- mapM (walkDir list) paths 
+        return $ concat walkd
 
 parseFileList :: String -> [JSONFileInfo]
 parseFileList body = mapMaybe parseWlanPush $ findWlanPush body
@@ -36,10 +41,3 @@ appendBaseUrl = (++) "http://192.168.1.105"
 
 listFAFiles :: IO [FAPath]
 listFAFiles = walkDir list $ DirPath "/" 
-
-walkDir :: (FAPath -> IO [FAPath]) -> FAPath -> IO [FAPath]
-walkDir list (JPGPath path) = return [JPGPath path]
-walkDir list (DirPath path) = do
-    paths <- list $ DirPath path
-    walkd <- mapM (walkDir list) paths 
-    return $ concat walkd
