@@ -47,6 +47,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - flashairdd
+    - scotty
+    - transformers
 
 tests:
   flashairdd-test:
