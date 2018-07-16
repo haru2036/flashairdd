@@ -7,7 +7,6 @@ module Lib
 where
 
 import           Network.HTTP.Client
-import           Network.Download
 import           Control.Monad
 import           Data.Text                      ( Text )
 import           Data.Text.Lazy.Encoding
@@ -26,11 +25,10 @@ import           Types
 import           FAPath
 import           LocalPath
 import           HTTP
+import           Network.HTTP
+import           Network.URI
 
 someFunc = downloadNotDownloadedFiles
-
-
-
 
 downloadAllFiles :: IO ()
 downloadAllFiles = do
@@ -51,14 +49,15 @@ downloadNotDownloadedFiles = do
 
 downloadAndSaveFile :: FAPath -> IO ()
 downloadAndSaveFile path = do
-    result <- openURI $ appendBaseUrl $ getPath path
-    case result of
-        Right content -> do
+    case parseURI $ appendBaseUrl $ getPath path of
+        Just uri -> do
+            result <- simpleHTTP $ Request uri GET [] ""    
             print ("downloading:" ++ (fileName (getPath path)))
             createDirectoryIfMissing True $ fileDir ("photos" ++ getPath path)
-            Data.ByteString.writeFile ("photos" ++ getPath path) content
-        Left err -> print err
+            case result of 
+                Right res -> Data.ByteString.writeFile ("photos" ++ getPath path) $ rspBody res
+                Left err -> print err
+        Nothing -> return ()
   where
     fileDir  = reverse . dropWhile ('/' /=) . reverse
     fileName = reverse . takeWhile ('/' /=) . reverse
-

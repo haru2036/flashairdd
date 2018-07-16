@@ -25,10 +25,11 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
+  - transformers
+  - either
   - http-client
   - text
   - bytestring
-  - download
   - directory
   - regex-pcre
   - regex-posix
@@ -36,6 +37,8 @@ library:
   - split
   - aeson
   - system-fileio
+  - HTTP
+  - network-uri
 
 executables:
   flashairdd-exe:
